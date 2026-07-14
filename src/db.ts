@@ -194,37 +194,12 @@ export class IMsgDb {
       LIMIT ?
     `)
 
-    this.qPoll = db.prepare(`
-      SELECT ${MSG_COLS}
-      ${MSG_JOINS}
-      WHERE m.ROWID > ?
-      ORDER BY m.ROWID ASC
-      LIMIT 1000
-    `)
-
-    this.qPollRowidChat = db.prepare(`
-      SELECT ${MSG_COLS}
-      ${MSG_JOINS}
-      WHERE m.ROWID > ? AND c.guid = ?
-      ORDER BY m.ROWID ASC
-      LIMIT 1000
-    `)
-
-    this.qPollDate = db.prepare(`
-      SELECT ${MSG_COLS}
-      ${MSG_JOINS}
-      WHERE m.date > ?
-      ORDER BY m.ROWID ASC
-      LIMIT 1000
-    `)
-
-    this.qPollDateChat = db.prepare(`
-      SELECT ${MSG_COLS}
-      ${MSG_JOINS}
-      WHERE m.date > ? AND c.guid = ?
-      ORDER BY m.ROWID ASC
-      LIMIT 1000
-    `)
+    const pollSql = (where: string): string =>
+      `SELECT ${MSG_COLS} ${MSG_JOINS} WHERE ${where} ORDER BY m.ROWID ASC LIMIT 1000`
+    this.qPoll = db.prepare(pollSql('m.ROWID > ?'))
+    this.qPollRowidChat = db.prepare(pollSql('m.ROWID > ? AND c.guid = ?'))
+    this.qPollDate = db.prepare(pollSql('m.date > ?'))
+    this.qPollDateChat = db.prepare(pollSql('m.date > ? AND c.guid = ?'))
 
     this.qWatermark = db.prepare(`SELECT MAX(ROWID) AS max FROM message`)
 
