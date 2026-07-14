@@ -1,0 +1,33 @@
+{
+  "name": "imsg-cli",
+  "version": "0.1.0",
+  "description": "iMessage CLI for macOS — read, search, send, poll, watch",
+  "license": "MIT",
+  "author": "Cameron Olechowski",
+  "type": "module",
+  "bin": {
+    "imsg": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "skills",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "dev": "bun run src/cli.ts",
+    "build": "bun build src/cli.ts --target=node --outfile=dist/cli.js && node scripts/fix-shebang.mjs",
+    "typecheck": "tsc --noEmit",
+    "fixture": "node scripts/make-fixture.ts",
+    "test": "node scripts/make-fixture.ts && bun run build && bun test",
+    "prepublishOnly": "bun run build"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.0",
+    "@types/node": "^22",
+    "typescript": "^5.6.0"
+  }
+}
