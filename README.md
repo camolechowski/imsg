@@ -13,6 +13,12 @@ npm i -g imsg-cli
 bun add -g imsg-cli
 ```
 
+Or try it without installing:
+
+```sh
+npx -y imsg-cli doctor    # bunx imsg-cli doctor is faster
+```
+
 Or from a checkout:
 
 ```sh
