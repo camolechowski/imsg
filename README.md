@@ -1,5 +1,9 @@
 # imsg
 
+[![npm](https://img.shields.io/npm/v/imsg-cli)](https://www.npmjs.com/package/imsg-cli)
+[![CI](https://github.com/camolechowski/imsg/actions/workflows/ci.yml/badge.svg)](https://github.com/camolechowski/imsg/actions/workflows/ci.yml)
+[![license](https://img.shields.io/npm/l/imsg-cli)](LICENSE)
+
 Read, search, send, poll, watch, and stream iMessages from the terminal. Zero
 runtime dependencies. Runs on node >= 22.13 or bun. macOS only — installs
 anywhere, but every command (except `help`) prints a warning and exits 1 on
