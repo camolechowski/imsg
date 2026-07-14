@@ -64,7 +64,8 @@ Message shape (shared by read/recent/poll/watch/search):
 ```json
 { "rowid": 48291, "guid": "...", "text": "hello", "date": "2026-07-14T17:44:08.441Z",
   "isFromMe": false, "handle": "+14085551234", "service": "iMessage",
-  "chatGuid": "iMessage;-;+14085551234", "hasAttachments": true,
+  "chatGuid": "iMessage;-;+14085551234", "chatId": 7, "chatName": "+14085551234",
+  "hasAttachments": true,
   "attachments": [{ "filename": "~/Library/Messages/Attachments/ab/cd/IMG_0001.heic",
                     "mimeType": "image/heic", "transferName": "IMG_0001.heic",
                     "resolvedPath": "/Users/me/Library/Messages/Attachments/ab/cd/IMG_0001.heic" }],
@@ -145,6 +146,48 @@ Tail new messages. Flags: `--interval MS` (default 1000), `--timeout SECS`.
   exits 0. Deadline passed -> `{ chat, messages: [], cursor }` and exit 124.
 - Scoped target failing the allowlist exits 2 immediately; unscoped watch with
   an allowlist skips non-allowed chats.
+
+### `imsg stream [handle|chat-guid]` (alias `st`)
+
+Long-running NDJSON event stream on stdout for agent harness monitors
+(Claude Code Monitor tool, Codex shell loops, or anything that tails a
+background process's output). Stdout carries only event lines — no ANSI, no
+human formatting, `--json` is implied/no-op. Logs and errors go to stderr.
+
+Flags:
+
+| Flag | Meaning |
+|-|-|
+| `--interval MS` | Poll interval (default 1000) |
+| `--timeout SECS` | Exit 124 if the deadline passes (checked independently of `--max-events`) |
+| `--max-events N` | Exit 0 after N `"message"` events |
+| `--from HANDLE` | Filter by sender; repeatable and/or comma-separated, any match. Use `me` to match your own outbound messages. |
+| `--chat-id N` | Filter to one chat by its numeric chat id (see the `chatId` field below) |
+| `--contains STR` | Case-insensitive substring filter on message text |
+
+Outbound (`is_from_me`) messages are included by default when no `--from`
+filter is given.
+
+On start, emits one `ready` line at the current watermark, then polls for
+new messages using the same rowid-cursor machinery as `poll`/`watch`.
+
+Event schema (one JSON object per line):
+
+```json
+{"type":"ready","cursor":{"rowid":48291,"ts":"2026-07-14T17:50:14.764Z"}}
+{"type":"message","rowid":48292,"ts":"2026-07-14T17:50:20.111Z","chatId":7,
+ "chat":"+14085551234","from":"+14085551234","isFromMe":false,"text":"on my way",
+ "attachments":[]}
+```
+
+`chat` is the chat's display name or identifier; `from` is the sender handle
+or the literal string `"me"` for your own messages.
+
+Exit codes: `0` — `--max-events` reached, or clean exit (Ctrl+C/SIGTERM);
+`1` — error (chat not found, unreadable db); `2` — blocked by allowlist;
+`124` — `--timeout` deadline passed with no qualifying event.
+
+Without `--max-events` or `--timeout`, runs until killed.
 
 ### `imsg info`
 

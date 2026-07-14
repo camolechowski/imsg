@@ -11,6 +11,7 @@ import { handleRead } from './commands/read'
 import { handleRecent } from './commands/recent'
 import { handleSearch } from './commands/search'
 import { handleSend } from './commands/send'
+import { handleStream } from './commands/stream'
 import { handleWatch } from './commands/watch'
 import { makeOut } from './format'
 import { getBool, parseArgs } from './parse'
@@ -29,6 +30,7 @@ Commands:
   send <handle> <text>   Send a message
   watch                  Tail new messages live
   poll [handle|guid]     New messages since a cursor (non-blocking)
+  stream                 NDJSON event stream for agent harness monitors
   info                   Show DB status, self addresses
   doctor                 Check permissions & environment
   help                   This screen
@@ -43,8 +45,11 @@ Flags:
       --me               Only my own messages (recent)
       --search STR       Filter chats by name/identifier/last text
       --since-rowid N    Poll cursor (message ROWID)
-      --interval MS      Watch poll interval (default 1000)
-      --timeout SECS     Watch: exit 124 if no new message in time
+      --interval MS      Watch/stream poll interval (default 1000)
+      --timeout SECS     Watch/stream: exit 124 if no new message in time
+      --max-events N     Stream: exit 0 after N message events
+      --chat-id N        Stream: filter to one chat (numeric chat id)
+      --contains STR     Stream: case-insensitive substring filter on text
       --file PATH        Send a file attachment
       --yes              Confirm send when confirmSend is enabled
       --force            Bypass long-message confirmation on send
@@ -62,6 +67,7 @@ Examples:
   imsg send +14085089981 --file ~/Desktop/pic.jpg
   imsg watch +14085089981 --timeout 300 --json
   imsg poll --since-rowid 48291 --json
+  imsg stream --from +14085089981 --max-events 1 --timeout 600
 `
 
 async function main(): Promise<void> {
@@ -118,6 +124,10 @@ async function main(): Promise<void> {
         break
       case 'poll':
         await handlePoll(ctx)
+        break
+      case 'stream':
+      case 'st':
+        await handleStream(ctx)
         break
       case 'info':
         handleInfo(ctx)

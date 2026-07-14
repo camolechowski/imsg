@@ -65,13 +65,31 @@ imsg watch +14085551234 --timeout 300 --json
 - Exit 0: stdout is one `{ chat, messages, cursor }` object with the new messages.
 - Exit 124: timed out; `messages` is empty, `cursor` is current.
 
+## Monitoring / waiting for messages
+
+For agent harnesses that watch a background process's output rather than
+polling a script, use `imsg stream` — a long-running NDJSON event stream
+(one JSON object per stdout line, no ANSI, no human formatting):
+
+```sh
+imsg stream --from +14085551234 --max-events 1 --timeout 600
+```
+
+Run it as a background command and watch stdout for the `"type":"message"`
+line: in Claude Code, the Monitor tool watching the background shell's
+stdout; in other harnesses, tail the background process's output until a
+matching line appears or the process exits. Exits 0 once `--max-events` is
+hit, 124 on `--timeout` with no match, 2 if policy-blocked. See
+[references/commands.md](references/commands.md) for the full event schema.
+
 ## Send safety
 
 - Confirm the recipient handle with the user before any real send.
-- Respect the opt-in config at `~/.config/imsg/config.json`
-  (`{ "allowlist": ["+1408...", "a@b.com", "iMessage;-;..."], "confirmSend": true }`).
-  Exit 2 with `blocked: true` means policy-blocked: surface it to the user,
-  do NOT retry or work around it.
+- Optional advanced config at `~/.config/imsg/config.json` can restrict imsg
+  to an allowlist of handles/chats (`{ "allowlist": [...], "confirmSend": true }`);
+  by default (no config file) everything is unrestricted. When a block does
+  occur (exit 2, `blocked: true`), surface it to the user — do NOT retry or
+  work around it.
 - When `confirmSend` is enabled, sends require `--yes`.
 - Use `--dry-run` to validate a send with zero side effects (works with text and files).
 - Messages over 500 chars require `--force` in interactive human mode.

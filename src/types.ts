@@ -17,6 +17,8 @@ export interface Message {
   handle: string | null
   service: string
   chatGuid: string
+  chatId: number
+  chatName: string
   hasAttachments: boolean
   attachments: AttachmentInfo[]
   /** account field on message — your own sending address (e.g. "E:cam@..."). */

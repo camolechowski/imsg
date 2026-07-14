@@ -68,6 +68,7 @@ interface MsgRow {
   account: string | null
   handle_id: string | null
   chat_guid: string
+  chat_rowid: number
   chat_style: number | null
   chat_identifier: string | null
   chat_display_name: string | null
@@ -75,8 +76,8 @@ interface MsgRow {
 
 const MSG_COLS = `m.ROWID AS rowid, m.guid, m.text, m.attributedBody, m.date,
                   m.is_from_me, m.cache_has_attachments, m.service, m.account,
-                  h.id AS handle_id, c.guid AS chat_guid, c.style AS chat_style,
-                  c.chat_identifier, c.display_name AS chat_display_name`
+                  h.id AS handle_id, c.guid AS chat_guid, c.ROWID AS chat_rowid,
+                  c.style AS chat_style, c.chat_identifier, c.display_name AS chat_display_name`
 
 const MSG_JOINS = `FROM message m
                    JOIN chat_message_join cmj ON cmj.message_id = m.ROWID
@@ -371,6 +372,8 @@ export class IMsgDb {
       handle: r.handle_id,
       service: r.service ?? 'iMessage',
       chatGuid: r.chat_guid,
+      chatId: r.chat_rowid,
+      chatName: r.chat_display_name ?? r.chat_identifier ?? r.chat_guid,
       hasAttachments: r.cache_has_attachments === 1,
       attachments: r.cache_has_attachments === 1 ? this.attachments(r.rowid) : [],
       account: r.account,
