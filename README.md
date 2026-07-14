@@ -1,7 +1,9 @@
 # imsg
 
-Read, search, send, poll, and watch iMessages from the terminal. Zero runtime
-dependencies. Runs on node >= 22.13 or bun. macOS only.
+Read, search, send, poll, watch, and stream iMessages from the terminal. Zero
+runtime dependencies. Runs on node >= 22.13 or bun. macOS only — installs
+anywhere, but every command (except `help`) prints a warning and exits 1 on
+other platforms.
 
 ## Install
 
@@ -49,6 +51,7 @@ imsg send +14085551234 --file ~/Desktop/pic.jpg   # send a file
 imsg watch                                    # tail all new messages live
 imsg watch +14085551234 --timeout 300         # block up to 5m for a reply
 imsg poll --since-rowid 48291 --json          # non-blocking: new since cursor
+imsg stream --from +14085551234 --timeout 600 # NDJSON event stream for agent monitors
 imsg doctor                                   # check permissions & environment
 ```
 
@@ -79,7 +82,7 @@ No config file = current unrestricted behavior. Create
 | 1 | error |
 | 2 | usage error or blocked by safety policy |
 | 3 | poll: no new messages |
-| 124 | watch: timeout |
+| 124 | watch/stream: timeout |
 
 ## Agent usage
 
@@ -88,7 +91,9 @@ AI agents should install the bundled skill (this repo's layout supports
 [skills/imsg/SKILL.md](skills/imsg/SKILL.md) — it covers the poll/cursor
 wait-for-reply pattern, the JSON contracts, and the send safety rules. The full
 command reference lives at
-[skills/imsg/references/commands.md](skills/imsg/references/commands.md).
+[skills/imsg/references/commands.md](skills/imsg/references/commands.md), and
+copy-paste use-case recipes at
+[skills/imsg/references/recipes.md](skills/imsg/references/recipes.md).
 
 ## Development
 

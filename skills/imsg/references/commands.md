@@ -223,6 +223,7 @@ fully unrestricted. Invalid JSON = every gated command exits 1 (fail closed).
 
 - `allowlist`: handles (normalized: US 10-digit -> +1 E.164, emails lowercased)
   and/or chat GUIDs. Present-but-empty blocks everything. Gates `send` targets,
-  scoped `poll`/`watch` targets, and filters unscoped `poll`/`watch` output.
+  scoped `poll`/`watch`/`stream` targets, and filters unscoped
+  `poll`/`watch`/`stream` output.
   A group chat is allowed if its GUID, identifier, or any participant matches.
 - `confirmSend`: when true, every send requires `--yes`.

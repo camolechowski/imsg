@@ -124,3 +124,4 @@ Messages.app, runtime, config.
   (alternate safety config).
 
 Full command/flag/exit-code and JSON-shape reference: [references/commands.md](references/commands.md).
+Copy-paste patterns for common use cases: [references/recipes.md](references/recipes.md).
