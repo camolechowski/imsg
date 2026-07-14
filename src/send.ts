@@ -29,6 +29,21 @@ const SCRIPT_FILE_BY_CHAT = `on run argv
   tell application "Messages" to send (POSIX file (item 1 of argv)) to chat id (item 2 of argv)
 end run`
 
+const SCRIPT_FILE_BY_BUDDY = `on run argv
+  set targetFile to POSIX file (item 1 of argv)
+  set targetHandle to item 2 of argv
+  set serviceType to item 3 of argv
+  tell application "Messages"
+    if serviceType is "SMS" then
+      set targetService to 1st service whose service type is SMS
+    else
+      set targetService to 1st service whose service type is iMessage
+    end if
+    set targetBuddy to buddy targetHandle of targetService
+    send targetFile to targetBuddy
+  end tell
+end run`
+
 export interface SendOptions {
   /** Chunk size cap; long texts are split before sending. */
   chunkLimit?: number
@@ -98,7 +113,11 @@ export function sendByBuddy(
   return { ok: true, via: 'buddy', chunks: chunks.length }
 }
 
-export function sendFileByChat(chatGuid: string, filePath: string): SendOutcome {
+export function sendFileByChat(chatGuid: string, filePath: string, opts: SendOptions = {}): SendOutcome {
+  if (opts.dryRun) {
+    process.stderr.write(`[dry-run] file=${filePath} chat=${chatGuid}\n`)
+    return { ok: true, via: 'chat-id', chunks: 1 }
+  }
   const res = spawnSync('osascript', ['-', filePath, chatGuid], {
     input: SCRIPT_FILE_BY_CHAT,
     encoding: 'utf8',
@@ -112,6 +131,31 @@ export function sendFileByChat(chatGuid: string, filePath: string): SendOutcome 
     }
   }
   return { ok: true, via: 'chat-id', chunks: 1 }
+}
+
+export function sendFileByBuddy(
+  handle: string,
+  filePath: string,
+  service: 'iMessage' | 'SMS' = 'iMessage',
+  opts: SendOptions = {},
+): SendOutcome {
+  if (opts.dryRun) {
+    process.stderr.write(`[dry-run] file=${filePath} buddy=${handle} service=${service}\n`)
+    return { ok: true, via: 'buddy', chunks: 1 }
+  }
+  const res = spawnSync('osascript', ['-', filePath, handle, service], {
+    input: SCRIPT_FILE_BY_BUDDY,
+    encoding: 'utf8',
+  })
+  if (res.status !== 0) {
+    return {
+      ok: false,
+      via: 'buddy',
+      chunks: 1,
+      error: res.stderr.trim() || `osascript exit ${res.status}`,
+    }
+  }
+  return { ok: true, via: 'buddy', chunks: 1 }
 }
 
 function chunk(text: string, limit: number, onNewline: boolean): string[] {

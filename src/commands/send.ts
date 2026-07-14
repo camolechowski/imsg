@@ -1,7 +1,10 @@
+import { existsSync } from 'fs'
+import { homedir } from 'os'
+import { basename, resolve } from 'path'
 import { IMsgDb } from '../db'
 import { colors, jsonOut } from '../format'
 import { getBool, getString, looksLikeChatGuid, normalizeHandle } from '../parse'
-import { sendByBuddy, sendByChat } from '../send'
+import { sendByBuddy, sendByChat, sendFileByBuddy, sendFileByChat, type SendOutcome } from '../send'
 import type { CommandContext, SendResult } from '../types'
 
 export function handleSend(ctx: CommandContext): SendResult {
@@ -12,18 +15,32 @@ export function handleSend(ctx: CommandContext): SendResult {
     textFromArgs ||
     (typeof ctx.flags.text === 'string' ? ctx.flags.text : '') ||
     (typeof ctx.flags.message === 'string' ? ctx.flags.message : '')
+  const fileFlag = getString(ctx.flags, 'file')
   const dryRun = getBool(ctx.flags, 'dry-run')
   const force = getBool(ctx.flags, 'force')
   const serviceFlag = getString(ctx.flags, 'service')
   const wantSMS = serviceFlag?.toUpperCase() === 'SMS'
 
-  if (!target || !text) {
-    console.error('usage: imsg send <handle|chat-guid> <text>  (or --to / --text)')
+  if (!target || (!text && !fileFlag)) {
+    console.error('usage: imsg send <handle|chat-guid> [text] [--file PATH]  (or --to / --text)')
     process.exit(2)
   }
 
+  let filePath: string | undefined
+  if (fileFlag) {
+    filePath = resolve(fileFlag.startsWith('~/') ? homedir() + fileFlag.slice(1) : fileFlag)
+    if (!existsSync(filePath)) {
+      if (ctx.out.json) {
+        console.log(JSON.stringify({ error: 'file not found', file: filePath }))
+      } else {
+        console.error(`imsg: file not found: ${filePath}`)
+      }
+      process.exit(1)
+    }
+  }
+
   // Confirmation gate: pasted long messages or unfamiliar destinations should
-  // not fire silently. Skip with --force.
+  // not fire silently. Skip with --force. Applies to text only, not file sends.
   if (!force && !ctx.out.json && process.stdout.isTTY && text.length > 500) {
     const c = colors(ctx.out)
     console.error(c.yellow(`Message is ${text.length} chars. Re-run with --force to send.`))
@@ -56,32 +73,49 @@ export function handleSend(ctx: CommandContext): SendResult {
     if (!chatGuid) via = 'buddy'
   }
 
-  const result = chatGuid
-    ? sendByChat(chatGuid, text, { dryRun })
-    : sendByBuddy(recipient, text, wantSMS ? 'SMS' : 'iMessage', { dryRun })
+  // Text first (if any), then the file. First failure wins.
+  let result: SendOutcome | undefined
+  if (text) {
+    result = chatGuid
+      ? sendByChat(chatGuid, text, { dryRun })
+      : sendByBuddy(recipient, text, wantSMS ? 'SMS' : 'iMessage', { dryRun })
+  }
+  let fileResult: SendOutcome | undefined
+  if (filePath && (result?.ok ?? true)) {
+    fileResult = chatGuid
+      ? sendFileByChat(chatGuid, filePath, { dryRun })
+      : sendFileByBuddy(recipient, filePath, wantSMS ? 'SMS' : 'iMessage', { dryRun })
+  }
+  const combined: SendOutcome = {
+    ok: (result?.ok ?? true) && (fileResult?.ok ?? true),
+    via: (result ?? fileResult)?.via ?? via,
+    chunks: result?.chunks ?? 0,
+    error: result?.error ?? fileResult?.error,
+  }
 
   const out: SendResult = {
-    ok: result.ok,
+    ok: combined.ok,
     chatGuid,
     recipient,
-    via: result.via,
+    via: combined.via,
     text,
-    chunks: result.chunks,
-    error: result.error,
+    chunks: combined.chunks,
+    error: combined.error,
   }
 
   if (ctx.out.json) {
-    console.log(jsonOut(out))
+    console.log(jsonOut({ ...out, file: filePath ?? null }))
   } else {
     const c = colors(ctx.out)
-    if (result.ok) {
-      const tag = via === 'chat-id' ? c.dim(`(chat ${chatGuid?.slice(-8)})`) : c.dim('(new buddy)')
-      console.log(`${c.green('✓')} sent to ${c.bold(recipient)} ${tag}  ${c.dim(`${result.chunks} chunk${result.chunks === 1 ? '' : 's'}`)}`)
+    if (combined.ok) {
+      const tag = combined.via === 'chat-id' ? c.dim(`(chat ${chatGuid?.slice(-8)})`) : c.dim('(new buddy)')
+      const fileTag = fileResult?.ok && filePath ? `  ${c.dim(`[+file ${basename(filePath)}]`)}` : ''
+      console.log(`${c.green('✓')} sent to ${c.bold(recipient)} ${tag}  ${c.dim(`${combined.chunks} chunk${combined.chunks === 1 ? '' : 's'}`)}${fileTag}`)
     } else {
-      console.log(`${c.red('✗')} failed: ${result.error ?? '(unknown)'}`)
+      console.log(`${c.red('✗')} failed: ${combined.error ?? '(unknown)'}`)
     }
   }
 
-  if (!result.ok) process.exit(1)
+  if (!combined.ok) process.exit(1)
   return out
 }
