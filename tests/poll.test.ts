@@ -1,6 +1,13 @@
 import { Database } from 'bun:sqlite'
-import { expect, test } from 'bun:test'
+import { afterAll, expect, test } from 'bun:test'
 import { FIXTURE, fixtureDb, runCli } from './helpers'
+
+afterAll(() => {
+  const db = new Database(fixtureDb)
+  db.query('DELETE FROM chat_message_join WHERE message_id > ?').run(FIXTURE.maxRowid)
+  db.query('DELETE FROM message WHERE ROWID > ?').run(FIXTURE.maxRowid)
+  db.close()
+})
 
 test('poll with no cursor bootstraps at the watermark and exits 3', () => {
   const r = runCli(['poll', '--json'])
