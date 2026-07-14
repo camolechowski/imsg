@@ -4,6 +4,25 @@
   "description": "iMessage CLI for macOS — read, search, send, poll, watch",
   "license": "MIT",
   "author": "Cameron Olechowski",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/camolechowski/imsg.git"
+  },
+  "homepage": "https://github.com/camolechowski/imsg#readme",
+  "bugs": "https://github.com/camolechowski/imsg/issues",
+  "keywords": [
+    "imessage",
+    "messages",
+    "macos",
+    "cli",
+    "sms",
+    "agent",
+    "claude",
+    "skill"
+  ],
+  "os": [
+    "darwin"
+  ],
   "type": "module",
   "bin": {
     "imsg": "./dist/cli.js"
@@ -23,7 +42,7 @@
     "typecheck": "tsc --noEmit",
     "fixture": "node scripts/make-fixture.ts",
     "test": "node scripts/make-fixture.ts && bun run build && bun test",
-    "prepublishOnly": "bun run build"
+    "prepublishOnly": "bun run typecheck && bun run test"
   },
   "devDependencies": {
     "@types/bun": "^1.2.0",
