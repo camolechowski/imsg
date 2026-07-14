@@ -20,9 +20,6 @@
     "claude",
     "skill"
   ],
-  "os": [
-    "darwin"
-  ],
   "type": "module",
   "bin": {
     "imsg": "./dist/cli.js"

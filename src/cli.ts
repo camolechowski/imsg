@@ -79,6 +79,13 @@ async function main(): Promise<void> {
     return
   }
 
+  if (process.platform !== 'darwin') {
+    console.error(
+      'imsg only works on macOS — it reads ~/Library/Messages/chat.db and drives Messages.app via osascript.',
+    )
+    process.exit(1)
+  }
+
   const parsed = parseArgs(argv.slice(1))
   if (getBool(parsed.flags, 'help')) {
     process.stdout.write(HELP)
