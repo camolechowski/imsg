@@ -1,6 +1,7 @@
 import { existsSync } from 'fs'
 import { homedir } from 'os'
 import { basename, resolve } from 'path'
+import { configPath, EXIT, isRecipientAllowed, loadConfig } from '../config'
 import { IMsgDb } from '../db'
 import { colors, jsonOut } from '../format'
 import { getBool, getString, looksLikeChatGuid, normalizeHandle } from '../parse'
@@ -24,6 +25,25 @@ export function handleSend(ctx: CommandContext): SendResult {
   if (!target || (!text && !fileFlag)) {
     console.error('usage: imsg send <handle|chat-guid> [text] [--file PATH]  (or --to / --text)')
     process.exit(2)
+  }
+
+  // Opt-in safety rails. Blocked sends exit 2 and leak no message data.
+  const cfg = loadConfig()
+  if (!isRecipientAllowed(cfg, target)) {
+    if (ctx.out.json) {
+      console.log(JSON.stringify({ error: 'send blocked by allowlist', blocked: true }))
+    } else {
+      console.error(`imsg: send blocked by allowlist (${configPath()})`)
+    }
+    process.exit(EXIT.BLOCKED)
+  }
+  if (cfg?.confirmSend === true && !getBool(ctx.flags, 'yes')) {
+    if (ctx.out.json) {
+      console.log(JSON.stringify({ error: 'confirmSend enabled; re-run with --yes', blocked: true }))
+    } else {
+      console.error('imsg: confirmSend is enabled; re-run with --yes to send')
+    }
+    process.exit(EXIT.BLOCKED)
   }
 
   let filePath: string | undefined
