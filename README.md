@@ -13,12 +13,11 @@ npm i -g imsg-cli
 bun add -g imsg-cli
 ```
 
-Not yet published to npm — install from a local checkout for now:
+Or from a checkout:
 
 ```sh
-git clone <repo> imsg && cd imsg
-bun install
-bun run build
+git clone https://github.com/camolechowski/imsg.git && cd imsg
+bun install && bun run build
 npm i -g .   # or: bun link
 ```
 
