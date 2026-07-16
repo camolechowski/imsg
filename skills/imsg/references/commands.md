@@ -161,6 +161,7 @@ Flags:
 | `--interval MS` | Poll interval (default 1000) |
 | `--timeout SECS` | Exit 124 if the deadline passes (checked independently of `--max-events`) |
 | `--max-events N` | Exit 0 after N `"message"` events |
+| `--lookback DUR` | Replay matching messages from this duration before live polling (for example `2m`) |
 | `--from HANDLE` | Filter by sender; repeatable and/or comma-separated, any match. Use `me` to match your own outbound messages. |
 | `--chat-id N` | Filter to one chat by its numeric chat id (see the `chatId` field below) |
 | `--contains STR` | Case-insensitive substring filter on message text |
@@ -168,8 +169,14 @@ Flags:
 Outbound (`is_from_me`) messages are included by default when no `--from`
 filter is given.
 
-On start, emits one `ready` line at the current watermark, then polls for
-new messages using the same rowid-cursor machinery as `poll`/`watch`.
+By default, start emits one `ready` line at the current watermark, then polls
+only for new messages using the same rowid-cursor machinery as `poll`/`watch`.
+With `--lookback DUR`, the stream snapshots that same startup watermark,
+emits matching historical messages in the requested bounded window (oldest
+first), then polls strictly above the snapshot. Rows that arrive while replay
+is running are therefore emitted once by the live phase; rows at or below the
+snapshot are replayed once. All `--chat-id`, positional chat, `--from`, and
+`--contains` filters apply identically to both phases.
 
 Event schema (one JSON object per line):
 
@@ -178,10 +185,15 @@ Event schema (one JSON object per line):
 {"type":"message","rowid":48292,"ts":"2026-07-14T17:50:20.111Z","chatId":7,
  "chat":"+14085551234","from":"+14085551234","isFromMe":false,"text":"on my way",
  "attachments":[]}
+{"type":"message","rowid":48290,"ts":"2026-07-14T17:49:59.111Z","chatId":7,
+ "chat":"+14085551234","from":"+14085551234","isFromMe":false,"text":"just before start",
+ "attachments":[],"replay":true}
 ```
 
 `chat` is the chat's display name or identifier; `from` is the sender handle
-or the literal string `"me"` for your own messages.
+or the literal string `"me"` for your own messages. `replay: true` appears
+only on messages emitted by `--lookback`; it is additive, so live event shape
+and existing consumers remain unchanged.
 
 Exit codes: `0` — `--max-events` reached, or clean exit (Ctrl+C/SIGTERM);
 `1` — error (chat not found, unreadable db); `2` — blocked by allowlist;

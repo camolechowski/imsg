@@ -61,6 +61,7 @@ imsg watch                                    # tail all new messages live
 imsg watch +14085551234 --timeout 300         # block up to 5m for a reply
 imsg poll --since-rowid 48291 --json          # non-blocking: new since cursor
 imsg stream --from +14085551234 --timeout 600 # NDJSON event stream for agent monitors
+imsg stream --chat-id 12 --from +17739974600 --lookback 2m # replay 2m, then monitor live
 imsg doctor                                   # check permissions & environment
 ```
 

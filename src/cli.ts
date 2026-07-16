@@ -48,6 +48,7 @@ Flags:
       --interval MS      Watch/stream poll interval (default 1000)
       --timeout SECS     Watch/stream: exit 124 if no new message in time
       --max-events N     Stream: exit 0 after N message events
+      --lookback DUR     Stream: replay matching history before live polling
       --chat-id N        Stream: filter to one chat (numeric chat id)
       --contains STR     Stream: case-insensitive substring filter on text
       --file PATH        Send a file attachment
