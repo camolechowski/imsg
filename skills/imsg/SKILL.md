@@ -82,6 +82,17 @@ matching line appears or the process exits. Exits 0 once `--max-events` is
 hit, 124 on `--timeout` with no match, 2 if policy-blocked. See
 [references/commands.md](references/commands.md) for the full event schema.
 
+When the monitor is started shortly after a separate one-shot read, add a
+bounded replay window so the handoff cannot miss an intervening message:
+
+```sh
+imsg stream --chat-id 12 --from +17739974600 --lookback 2m
+```
+
+`--lookback` applies the same chat, sender, and text filters to historical and
+live rows. Historical message events add `"replay": true`; live event shape is
+unchanged. Do not use it to bypass allowlist blocks or Full Disk Access.
+
 ## Send safety
 
 - Confirm the recipient handle with the user before any real send.

@@ -3,7 +3,7 @@
 
 import { EXIT, isChatAllowed, loadConfig } from '../config'
 import { IMsgDb } from '../db'
-import { getInt, getString, looksLikeChatGuid, normalizeHandle } from '../parse'
+import { getInt, getString, looksLikeChatGuid, normalizeHandle, parseSince } from '../parse'
 import { hasRenderableContent, type Chat, type CommandContext, type Message } from '../types'
 
 export async function handleStream(ctx: CommandContext): Promise<void> {
@@ -12,6 +12,7 @@ export async function handleStream(ctx: CommandContext): Promise<void> {
   const maxEvents = getInt(ctx.flags, 'max-events')
   const chatId = getInt(ctx.flags, 'chat-id')
   const contains = getString(ctx.flags, 'contains')?.toLowerCase()
+  const lookback = parseSince(getString(ctx.flags, 'lookback'))
   const fromFilter = getRepeatable(ctx.argv, 'from', '-f').map(h => normalizeFrom(h))
   const target = ctx.positional[0]
   const cfg = loadConfig()
@@ -69,6 +70,19 @@ export async function handleStream(ctx: CommandContext): Promise<void> {
   const deadline = timeoutSec !== undefined ? Date.now() + timeoutSec * 1000 : undefined
   let emitted = 0
 
+  if (lookback) {
+    const historical = db.messagesSinceDateThroughRowid(lookback, watermark, chat?.guid)
+    for (const m of historical) {
+      if (!matchesFilters(m)) continue
+      emitMessage(m, true)
+      emitted++
+      if (maxEvents !== undefined && emitted >= maxEvents) {
+        db.close()
+        process.exit(EXIT.OK)
+      }
+    }
+  }
+
   while (true) {
     const rows = db.pollSinceRowid(watermark, chat?.guid)
     for (const m of rows) {
@@ -90,7 +104,7 @@ export async function handleStream(ctx: CommandContext): Promise<void> {
   }
 }
 
-function emitMessage(m: Message): void {
+function emitMessage(m: Message, replay = false): void {
   console.log(
     JSON.stringify({
       type: 'message',
@@ -102,6 +116,7 @@ function emitMessage(m: Message): void {
       isFromMe: m.isFromMe,
       text: m.text,
       attachments: m.attachments,
+      ...(replay ? { replay: true } : {}),
     }),
   )
 }

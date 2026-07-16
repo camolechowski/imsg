@@ -98,6 +98,8 @@ export class IMsgDb {
   private qPollRowidChat!: SqlStatement
   private qPollDate!: SqlStatement
   private qPollDateChat!: SqlStatement
+  private qMessagesSinceDateThroughRowid!: SqlStatement
+  private qMessagesSinceDateThroughRowidChat!: SqlStatement
   private qWatermark!: SqlStatement
   private qAttachments!: SqlStatement
 
@@ -201,6 +203,13 @@ export class IMsgDb {
     this.qPollRowidChat = db.prepare(pollSql('m.ROWID > ? AND c.guid = ?'))
     this.qPollDate = db.prepare(pollSql('m.date > ?'))
     this.qPollDateChat = db.prepare(pollSql('m.date > ? AND c.guid = ?'))
+
+    const replaySql = (where: string): string =>
+      'SELECT ' + MSG_COLS + ' ' + MSG_JOINS + ' WHERE ' + where + ' ORDER BY m.date ASC, m.ROWID ASC'
+    this.qMessagesSinceDateThroughRowid = db.prepare(replaySql('m.date >= ? AND m.ROWID <= ?'))
+    this.qMessagesSinceDateThroughRowidChat = db.prepare(
+      replaySql('m.date >= ? AND m.ROWID <= ? AND c.guid = ?'),
+    )
 
     this.qWatermark = db.prepare(`SELECT MAX(ROWID) AS max FROM message`)
 
@@ -339,6 +348,14 @@ export class IMsgDb {
     const rows = (chatGuid
       ? (this.qPollDateChat.all(dateToApple(since), chatGuid) as MsgRow[])
       : (this.qPollDate.all(dateToApple(since)) as MsgRow[]))
+    return rows.map(r => this.toMessage(r))
+  }
+
+  /** Historical rows in a time window, capped at a startup ROWID watermark. */
+  messagesSinceDateThroughRowid(since: Date, throughRowid: number, chatGuid?: string): Message[] {
+    const rows = (chatGuid
+      ? (this.qMessagesSinceDateThroughRowidChat.all(dateToApple(since), throughRowid, chatGuid) as MsgRow[])
+      : (this.qMessagesSinceDateThroughRowid.all(dateToApple(since), throughRowid) as MsgRow[]))
     return rows.map(r => this.toMessage(r))
   }
 

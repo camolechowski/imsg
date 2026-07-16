@@ -48,9 +48,14 @@ Variants:
 ```sh
 imsg stream --from +14085551234,+17739974600        # multiple senders
 imsg stream --chat-id 7 --contains "approved"        # one chat, keyword match
+imsg stream --chat-id 12 --from +17739974600 --lookback 2m # replay setup gap, then live
 imsg stream --from me                                # only your own outbound
 imsg stream                                          # firehose: everything, runs until killed
 ```
+
+`--lookback` replays only matching recent messages, oldest first, then resumes
+strictly above the startup cursor. Replay events add `"replay": true`; live
+events are unchanged.
 
 ## Send a text, safely
 
