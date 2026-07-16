@@ -10,13 +10,53 @@ related: []
 
 ## Summary
 
-This workstream adds an opt-in bounded historical replay phase to `imsg stream`. `--lookback DUR` captures matching historical messages at or below one startup ROWID boundary, emits them oldest first with an additive `replay: true` field, and then continues live strictly above that boundary. The existing no-flag path stays live-only; final verification passed using only the synthetic fixture database.
+This workstream adds an opt-in bounded historical replay phase to `imsg stream`. `--lookback DUR` captures matching historical messages at or below one startup ROWID boundary, emits them oldest first with an additive `replay: true` field, and then continues live strictly above that boundary. The existing no-flag path stays live-only; a Bun 1.3.14 test-harness fast-exit race was closed without changing production stream semantics.
 
 ## Current open questions
 
 - [x] ~~Confirm through fixture tests that a snapshot upper bound prevents both a startup gap and a duplicate at the replay/live boundary.~~ → Verified by `tests/stream.test.ts`, 2026-07-15.
 
 ## Sessions
+
+### 2026-07-15 — session `20260715-a7ff8b4-ci` (agent: codex; generated session ID)
+**Branch / working tree:** `codex/stream-lookback` at `a7ff8b40083f37dcb79ce9c0a30e628ee0161881`
+**Spec ref:** CI run `29476658983` failure investigation and deterministic stream-test closeout
+**Files touched:** `tests/stream.test.ts`, `docs/implementation-notes/README.md`, `docs/implementation-notes/stream-lookback.md`
+
+#### Context loaded
+
+Read the shipped note and `gh run view 29476658983 --log-failed`. CI closed the child stdout about 412 ms after startup at `tests/stream.test.ts:121`; the previous helper did not drain stderr.
+
+#### Design decisions
+
+- **Test harness, not production retry:** Kept stream and DB source unchanged. The event assertion now runs while the child remains alive (`--max-events 2`), then a completion event triggers a clean exit.
+- **Closure diagnostics:** The helper drains stderr and reports exit code/stderr on closed-stream failures. Successful child exits are asserted as `0` with empty stderr.
+
+#### Deviations from spec
+
+- None. Exact-version reproduction found no SQLite error, so no DB lock or retry policy was added.
+
+#### Tradeoffs considered
+
+- **Busy timeout versus deterministic sequencing:** Rejected a production SQLite retry because the failure followed `ready`, CI logged no DB error, and 100 Bun `1.3.14` repetitions passed after test synchronization.
+
+#### Open questions
+
+- None.
+
+#### Footguns and gotchas
+
+- Bun `1.3.14` was downloaded to `/tmp/bun-1.3.14` for exact validation; all runs used only `tests/fixtures/chat.db`.
+
+#### What shipped this session
+
+- Inspected the actual failed run and added deterministic stream-test sequencing plus child stderr/exit diagnostics.
+- Ran the two affected tests 100 times under Bun `1.3.14` with no failures.
+- Ran the complete 45-test suite twice under Bun `1.3.14`, then ran exact-version typecheck/build and `git diff --check`; all passed.
+
+#### What's next
+
+- No further implementation work is required. Commit/push this test-only fix; do not merge, publish, or deploy.
 
 ### 2026-07-15 — session `20260715-01bea05-vfy` (agent: codex; generated session ID)
 **Branch / working tree:** `codex/stream-lookback` at `01bea05734ccd25f5015b468940635e8ec7090b1`

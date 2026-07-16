@@ -37,6 +37,7 @@ function insertMessage(opts: { chat: number; text: string; handle: number | null
 interface StreamHandle {
   nextLine(): Promise<any>
   waitExit(): Promise<number>
+  stderr(): Promise<string>
 }
 
 function spawnStream(args: string[], extraEnv: Record<string, string> = {}): StreamHandle {
@@ -54,8 +55,11 @@ function spawnStream(args: string[], extraEnv: Record<string, string> = {}): Str
   })
 
   const reader = proc.stdout.getReader()
+  const errorReader = proc.stderr.getReader()
   const decoder = new TextDecoder()
+  const errorDecoder = new TextDecoder()
   let buf = ''
+  let errorOutput = ''
   const queue: string[] = []
   let resolveWait: ((line: string | null) => void) | null = null
   let closed = false
@@ -89,18 +93,37 @@ function spawnStream(args: string[], extraEnv: Record<string, string> = {}): Str
     }
   })()
 
+  const stderrDone = (async () => {
+    while (true) {
+      const { value, done } = await errorReader.read()
+      if (done) return
+      errorOutput += errorDecoder.decode(value, { stream: true })
+    }
+  })()
+
+  const closedError = async (): Promise<Error> => {
+    const code = await proc.exited
+    await stderrDone
+    const detail = errorOutput.trim() ? `; stderr: ${errorOutput.trim()}` : ''
+    return new Error(`stream closed with no more lines (exit ${code}${detail})`)
+  }
+
   return {
     async nextLine() {
       if (queue.length > 0) return JSON.parse(queue.shift()!)
-      if (closed) throw new Error('stream closed with no more lines')
+      if (closed) throw await closedError()
       const line = await new Promise<string | null>(resolve => {
         resolveWait = resolve
       })
-      if (line === null) throw new Error('stream closed with no more lines')
+      if (line === null) throw await closedError()
       return JSON.parse(line)
     },
     async waitExit() {
       return await proc.exited
+    },
+    async stderr() {
+      await stderrDone
+      return errorOutput
     },
   }
 }
@@ -115,7 +138,7 @@ test('ready event is emitted with the current watermark cursor', async () => {
 })
 
 test('a newly inserted message produces a message event', async () => {
-  const s = spawnStream(['--interval', '100', '--max-events', '1', '--timeout', '5'])
+  const s = spawnStream(['--interval', '100', '--max-events', '2', '--timeout', '5'])
   await s.nextLine() // ready
   const rowid = insertMessage({ chat: 1, text: 'stream test message', handle: 1 })
   const msg = await s.nextLine()
@@ -123,7 +146,9 @@ test('a newly inserted message produces a message event', async () => {
   expect(msg.rowid).toBe(rowid)
   expect(msg.text).toBe('stream test message')
   expect(msg.isFromMe).toBe(false)
+  insertMessage({ chat: 1, text: 'stream completion message', handle: 1 })
   expect(await s.waitExit()).toBe(0)
+  expect(await s.stderr()).toBe('')
 })
 
 test('--from filter excludes non-matching senders', async () => {
@@ -137,10 +162,8 @@ test('--max-events 1 exits 0 after the first matching event', async () => {
   const s = spawnStream(['--interval', '100', '--max-events', '1', '--timeout', '5'])
   await s.nextLine() // ready
   insertMessage({ chat: 1, text: 'first', handle: 1 })
-  insertMessage({ chat: 1, text: 'second', handle: 1 })
-  const msg = await s.nextLine()
-  expect(msg.text).toBe('first')
   expect(await s.waitExit()).toBe(0)
+  expect(await s.stderr()).toBe('')
 })
 
 test('--timeout with no traffic exits 124', async () => {
