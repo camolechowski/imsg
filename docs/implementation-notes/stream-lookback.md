@@ -10,13 +10,53 @@ related: []
 
 ## Summary
 
-This workstream adds an opt-in bounded historical replay phase to `imsg stream`. `--lookback DUR` captures matching historical messages at or below one startup ROWID boundary, emits them oldest first with an additive `replay: true` field, and then continues live strictly above that boundary. The existing no-flag path stays live-only; all work and tests used only the synthetic fixture database.
+This workstream adds an opt-in bounded historical replay phase to `imsg stream`. `--lookback DUR` captures matching historical messages at or below one startup ROWID boundary, emits them oldest first with an additive `replay: true` field, and then continues live strictly above that boundary. The existing no-flag path stays live-only; final verification passed using only the synthetic fixture database.
 
 ## Current open questions
 
 - [x] ~~Confirm through fixture tests that a snapshot upper bound prevents both a startup gap and a duplicate at the replay/live boundary.~~ → Verified by `tests/stream.test.ts`, 2026-07-15.
 
 ## Sessions
+
+### 2026-07-15 — session `20260715-01bea05-vfy` (agent: codex; generated session ID)
+**Branch / working tree:** `codex/stream-lookback` at `01bea05734ccd25f5015b468940635e8ec7090b1`
+**Spec ref:** User-requested final bounded-lane verification and handoff
+**Files touched:** `docs/implementation-notes/README.md`, `docs/implementation-notes/stream-lookback.md`
+
+#### Context loaded
+
+Read the prior shipped note: there were no unresolved questions and the branch was clean.
+
+#### Design decisions
+
+- **Verification-only closeout:** Retained the verified source and added final evidence only.
+
+#### Deviations from spec
+
+- None.
+
+#### Tradeoffs considered
+
+- **Repeat full suite:** Re-ran the complete synthetic suite for final handoff evidence.
+
+#### Open questions
+
+- None.
+
+#### Footguns and gotchas
+
+- `bun run test` regenerates and uses `tests/fixtures/chat.db`; no real Messages data was read.
+- No deploy, npm publish, pull request creation, or merge was performed.
+
+#### What shipped this session
+
+- Re-ran `bun run test`: 45 passing tests.
+- Re-ran `bun run typecheck`, `bun run build`, and `git diff --check`: all passed.
+- Updated the implementation note/index with final verification and closeout state.
+
+#### What's next
+
+- No further action is required. An authorized maintainer may review or merge the branch; do not deploy or publish npm in this lane.
 
 ### 2026-07-15 — session `20260715-0961122-lbk` (agent: codex; generated session ID)
 **Branch / working tree:** `codex/stream-lookback` at `096112271ba4906f93a2a87f21ae58155a6d4f17` in `/Users/cameronolechowski/code/play/imsg-wrkts/stream-lookback`
